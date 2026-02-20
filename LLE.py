@@ -3,6 +3,10 @@ import cv2
 import os, sys
 from tqdm.auto import tqdm
 import numpy as np
+
+if not hasattr(np, 'trapz'):
+    np.trapz = np.trapezoid
+
 import quaternion as Q
 from bm3d import bm3d_rgb
 from multiprocessing import cpu_count
@@ -309,7 +313,7 @@ def qSIM(p_Im):
     _,Iname = os.path.split(p_Im)
     Inum,_ = os.path.splitext(Iname)
     I = cv2.cvtColor(cv2.imread(p_Im), cv2.COLOR_BGR2RGB)/255.0
-    # I = cv2.resize(I,(512,512))  #<---------------- for faster processing
+    I = cv2.resize(I,(512,512))  #<---------------- for faster processing
     
     # Fatcorize
     k = np.linspace(2,1,simNum)
@@ -326,50 +330,50 @@ def qSIM(p_Im):
         allE[i] = E
         En.append(normalizeIm(E))
         w1E.append(np.sum(np.ravel(E)))
-    # wE = w1E/np.sum(w1E)
-    # wI = np.mean(np.ravel(I))
+    wE = w1E/np.sum(w1E)
+    wI = np.mean(np.ravel(I))
    
     # Simulate exposure stack 
-    # simEn = []
-    # # f_overExp = False if (wI < 0.3) else True
-    # f_overExp = False if (wI < 0.5) else True
-    # if f_overExp:
-    #     print(f'------------------- IMAGE OVEREXPOSED : {Iname} -------------------')
-    #     plusminus = -1
-    #     En.reverse()
-    #     wE= np.flip(wE)
-    # else:
-    #     plusminus = 1
-    # for i in range(len(En)+1):
-    #     if i==0:
-    #         simEn.append(I)
-    #     else:
-    #         t = np.zeros_like(I)
-    #         I1 = cv2.cvtColor(np.float32(simEn[i-1]),cv2.COLOR_RGB2LAB)
-    #         I2 = cv2.cvtColor(np.float32(En[i-1]),cv2.COLOR_RGB2LAB)
-    #         t[:,:,0] = (1-alpha)*I1[:,:,0] + plusminus*alpha*I2[:,:,0]
-    #         t[:,:,1] = (1-alpha)*I1[:,:,1] + plusminus*alpha*I2[:,:,1]
-    #         t[:,:,2] = (1-alpha)*I1[:,:,2] + plusminus*alpha*I2[:,:,2]
-    #         t = cv2.cvtColor(np.float32(t),cv2.COLOR_LAB2RGB)
-    #         t = normalizeIm(t, 0,1-wE[i-1])  
-    #         simEn.append(t)
-    #     simEn[-1] = np.float32(simEn[-1])
-    # print(f'{Iname} Simulation Done.')
+    simEn = []
+    # f_overExp = False if (wI < 0.3) else True
+    f_overExp = False if (wI < 0.5) else True
+    if f_overExp:
+        print(f'------------------- IMAGE OVEREXPOSED : {Iname} -------------------')
+        plusminus = -1
+        En.reverse()
+        wE= np.flip(wE)
+    else:
+        plusminus = 1
+    for i in range(len(En)+1):
+        if i==0:
+            simEn.append(I)
+        else:
+            t = np.zeros_like(I)
+            I1 = cv2.cvtColor(np.float32(simEn[i-1]),cv2.COLOR_RGB2LAB)
+            I2 = cv2.cvtColor(np.float32(En[i-1]),cv2.COLOR_RGB2LAB)
+            t[:,:,0] = (1-alpha)*I1[:,:,0] + plusminus*alpha*I2[:,:,0]
+            t[:,:,1] = (1-alpha)*I1[:,:,1] + plusminus*alpha*I2[:,:,1]
+            t[:,:,2] = (1-alpha)*I1[:,:,2] + plusminus*alpha*I2[:,:,2]
+            t = cv2.cvtColor(np.float32(t),cv2.COLOR_LAB2RGB)
+            t = normalizeIm(t, 0,1-wE[i-1])  
+            simEn.append(t)
+        simEn[-1] = np.float32(simEn[-1])
+    print(f'{Iname} Simulation Done.')
 
     # Merge factors and enhance
-    # depth = np.uint8(np.floor( np.log(np.min((I.shape[0],I.shape[0]))) / np.log(2) ))
-    # if len(En)==1:
-    #     Iqsef = I # DO NOTHINGgroupLayers
-    # else:
-    #     Iqsef = exposure_fusion(simEn, depth)
-    # print(f'{Iname} Fusion Done.')
+    depth = np.uint8(np.floor( np.log(np.min((I.shape[0],I.shape[0]))) / np.log(2) ))
+    if len(En)==1:
+        Iqsef = I # DO NOTHINGgroupLayers
+    else:
+        Iqsef = exposure_fusion(simEn, depth)
+    print(f'{Iname} Fusion Done.')
 
-    # Iqsef = prctileNorm(Iqsef)
-    # if not f_overExp:
-    #     Iqsef = denoiseCBM3D(Iqsef)
-    #     print(f'{Iname} Denoising Done.')
-    # Iqsef = normalizeMinMax(Iqsef)
-    # print(f'{Iname} FINAL wE = {wE} ')
+    Iqsef = prctileNorm(Iqsef)
+    if not f_overExp:
+        Iqsef = denoiseCBM3D(Iqsef)
+        print(f'{Iname} Denoising Done.')
+    Iqsef = normalizeMinMax(Iqsef)
+    print(f'{Iname} FINAL wE = {wE} ')
 
     # save results
     p_resDir = os.path.join(p_resDirRoot,Inum)
@@ -382,9 +386,9 @@ def qSIM(p_Im):
         cv2.imwrite(p_res, cv2.cvtColor(np.float32(En[i]), cv2.COLOR_RGB2BGR)*255)
         # p_res = os.path.join(p_resDir,Inum+'_simEn'+str(i)+'.jpg')
         # cv2.imwrite(p_res, cv2.cvtColor(np.float32(simEn[i]), cv2.COLOR_RGB2BGR)*255)
-    # p_res = os.path.join(p_resDir, Inum+'_L.png')
-    # cv2.imwrite(p_res, cv2.cvtColor(np.float32(Iqsef), cv2.COLOR_RGB2BGR)*255)
-    # print(f'{Iname} Saving Done. ')
+    p_res = os.path.join(p_resDir, Inum+'_L.png')
+    cv2.imwrite(p_res, cv2.cvtColor(np.float32(Iqsef), cv2.COLOR_RGB2BGR)*255)
+    print(f'{Iname} Saving Done. ')
 
 def qSIM_parallel(max_cpus, args):
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_cpus) as executor:
@@ -392,13 +396,24 @@ def qSIM_parallel(max_cpus, args):
 
 ################################################################################################
 if __name__=='__main__':    
-    with open('/home/saurabh/Desktop/Lolv1_testList.my') as f:
-        L = f.readlines()
-        LL = [l.split()[0] for l in L]    
+    # with open('/home/saurabh/Desktop/Lolv1_testList.my') as f:
+    #     L = f.readlines()
+    #     LL = [l.split()[0] for l in L]    
         
-        # parallel execution
-        qSIM_parallel(max_cpus, LL)
+    #     # parallel execution
+    #     qSIM_parallel(max_cpus, LL)
 
-        # singular execution
-        # for LLL in tqdm(LL,colour='green'):
-        #     qSIM(LLL)
+    #     # singular execution
+    #     # for LLL in tqdm(LL,colour='green'):
+    #     #     qSIM(LLL)
+
+    # 1. Define the path to your single image here
+    # Use forward slashes '/' or double backslashes '\\' for Windows paths
+    single_image_path = "547.png"
+
+    # 2. Check if file exists to avoid errors
+    if os.path.exists(single_image_path):
+        print(f"Processing: {single_image_path}")
+        qSIM(single_image_path)
+    else:
+        print(f"Error: File not found at {single_image_path}")

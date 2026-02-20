@@ -61,12 +61,48 @@ def test(config):
             # if config.f_denoise: pred = bilateral_blur(pred,(5,5), 0.4, (1.0,1.0))
             # if config.f_denoise: pred = bilateral_blur(pred,(5,5), 0.4, (1.0,1.0))
             
-            lpips_lis_C.append(loss_fn_vgg(y_labels,pred).item())
+            # lpips_lis_C.append(loss_fn_vgg(y_labels,pred).item())
+            lpips_lis_C.append(loss_fn_vgg(y_labels,pred).mean().item())
             im          = torch.permute(pred[0].detach().cpu(),(1,2,0)).numpy()
             if config.f_saveRes:
                 p_res   = os.path.join(p_resDir,imNum+'.png')
-                if not config.f_RGB: cv2.imwrite(p_res, cv2.cvtColor(np.uint8(im*255), cv2.COLOR_YCrCb2RGB)) # as input is YCbCr this is actually BGR output
-                else: cv2.imwrite(p_res, cv2.cvtColor(np.uint8(im*255), cv2.COLOR_RGB2BGR))
+                if not config.f_RGB:
+                    cv2.imwrite(p_res, cv2.cvtColor(np.uint8(im*255), cv2.COLOR_YCrCb2RGB)) # as input is YCbCr this is actually BGR output
+                # else:
+                #     cv2.imwrite(p_res, cv2.cvtColor(np.uint8(im*255), cv2.COLOR_RGB2BGR))
+                # else:
+                #     cv2.imwrite(p_res, np.uint8(im*255))
+                else: 
+                    # --- VALIDATION LOGIC START ---
+                    
+                    # 1. Get the raw output (which looks Red right now)
+                    # We assume this is BGR because removing the conversion made it look better
+                    # img_bgr = np.uint8(im * 255)
+                    img_bgr = cv2.cvtColor(np.uint8(im*255), cv2.COLOR_RGB2BGR)
+                    
+                    # 2. Apply "Gray World" White Balance to create a 2nd version
+                    # This math forces the average color of the image to be gray/neutral
+                    b, g, r = cv2.split(img_bgr)
+                    avg_b = np.mean(b)
+                    avg_g = np.mean(g)
+                    avg_r = np.mean(r)
+                    
+                    # Calculate "Average Gray" brightness
+                    avg_gray = (avg_b + avg_g + avg_r) / 3
+                    
+                    # Scale Blue and Red channels to match the average brightness
+                    # (Prevent division by zero with max(..., 1))
+                    b = np.clip(b * (avg_gray / max(avg_b, 1)), 0, 255).astype(np.uint8)
+                    g = np.clip(g * (avg_gray / max(avg_g, 1)), 0, 255).astype(np.uint8)
+                    r = np.clip(r * (avg_gray / max(avg_r, 1)), 0, 255).astype(np.uint8)
+                    
+                    img_balanced = cv2.merge([b, g, r])
+                    
+                    # 3. Save BOTH images
+                    cv2.imwrite(p_res, img_bgr)  # The original "Red" one
+                    cv2.imwrite(p_res.replace('.png', '_balanced.png'), img_balanced) # The fixed one
+                    
+                    # --- VALIDATION LOGIC END ---
 
             if config.f_eval:
                 Igt         = torch.permute(y_labels[0].detach().cpu(),(1,2,0)).numpy()

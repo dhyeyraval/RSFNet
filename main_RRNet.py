@@ -1,5 +1,15 @@
 import os, sys, argparse
-from distutils.util import strtobool
+# from distutils.util import strtobool
+# ...existing code...
+try:
+    from distutils.util import strtobool
+except Exception:
+    def strtobool(val):
+        v = str(val).strip().lower()
+        if v in ('y','yes','t','true','on','1'): return True
+        if v in ('n','no','f','false','off','0'): return False
+        raise ValueError(f'Invalid truth value: {val}')
+# ...existing code...
 from pprint import pprint
 # sys.path.append('/home2/saurabh.saini/WORK/CODES/RRR')
 import libs.FULL.src.v8.trainer as trainer

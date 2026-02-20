@@ -1,4 +1,5 @@
 from __future__ import print_function
+from logging import config
 import os, json, warnings, random
 import numpy as np
 from tqdm.auto import tqdm
@@ -29,7 +30,7 @@ def train(config):
     if not os.path.isdir(p_resDir): os.makedirs(p_resDir)
     n_epochs    = config.epochs
     device      = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    config.device = "cuda"
+    config.device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f'device={device}')
     
     # LOGGER CODE HERE -----------------------------------
@@ -70,12 +71,21 @@ def train(config):
             with open(p_resume_json,'r') as f:
                 resume_json     = json.load(f)
                 n_epochs        = config.epochs - resume_json['epoch']+1
-                config.__dict__ = resume_json['config']
+                # config.__dict__ = resume_json['config']
                 optimizer.param_groups[0]['lr'] = resume_json['lr']               
         else:   print(f'ERROR: Model not found at path {config.p_model}. Exitting !')
 
     # TRAIN -------------------------------------------------
-    for epoch in tqdm(range(n_epochs), leave=True, colour='GREEN'):
+    # for epoch in tqdm(range(n_epochs), leave=True, colour='GREEN'):
+    # NEW CORRECT BLOCK:
+    start_epoch = 0
+    if config.resume:
+        # We trust the JSON we just edited
+        json_path = os.path.splitext(config.p_model)[0] + '.json'
+        with open(json_path, 'r') as f:
+            start_epoch = json.load(f)['epoch'] + 1
+
+    for epoch in tqdm(range(start_epoch, config.epochs), leave=True, colour='GREEN'):
         dic   = {'train_loss':0, 'L_color':0, 'L_exp':0, 'L_TV':0, 'L_fact':0}
         model.train()
         print(f'*'*75)

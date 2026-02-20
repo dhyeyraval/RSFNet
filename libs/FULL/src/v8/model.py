@@ -274,10 +274,11 @@ class RRNet(nn.Module):
     
     def forward(self,Xin,epoch=0, imNum=None):
         loss = 0
-        # Xfact,L_fact       = self.factNet(Xin, epoch, imNum)
-        XfuseIn            = torch.cat([Xin,Xin,Xin,Xin,Xin,Xin],dim=1)
+        Xfact,L_fact       = self.factNet(Xin, epoch, imNum)
+        # XfuseIn            = torch.cat([Xin,Xin,Xin,Xin,Xin,Xin],dim=1)
+        XfuseIn = torch.cat([Xin, Xfact], dim=1)
         Xfuse              = self.fuseNet(XfuseIn, imNum)
-        L_fact              = torch.tensor(0.0, dtype=torch.float32, requires_grad=True)
+        # L_fact              = torch.tensor(0.0, dtype=torch.float32, requires_grad=True)
         if self.f_denoise:
             Xfuse              = bilateral_blur(Xfuse,(5,5), 0.5, (1,1))
             # Xfuse              = bilateral_blur(Xfuse,(5,5), 0.1, (0.1,0.1))
