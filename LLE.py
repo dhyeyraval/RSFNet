@@ -409,7 +409,7 @@ if __name__=='__main__':
 
     # 1. Define the path to your single image here
     # Use forward slashes '/' or double backslashes '\\' for Windows paths
-    single_image_path = "547.png"
+    single_image_path = "test.jpeg"
 
     # 2. Check if file exists to avoid errors
     if os.path.exists(single_image_path):
