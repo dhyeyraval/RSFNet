@@ -1,7 +1,5 @@
-The code was developed in VSCode and the config file can be directly loaded to replicate the results.
-Change dataset paths etc. appropriately.
+# Phase-1
+[Video link](https://drive.google.com/file/d/1cWx-G-baWldtYSa7py3g14UGbQ0CRMPz/view?usp=drive_link)
 
-For a purely optimization based factorization (without learning), directly run LLE.py
-LLE.py was initially developed using quaternion library (which was found later to be not necessary and simple vector optimization is sufficient). 
-
-TODO: Add full details and run scripts.
+# Phase-2
+[Video link](https://drive.google.com/file/d/16va_DvfyljU_iYkTpiJk0ZTtswJeA34P/view?usp=sharing)
